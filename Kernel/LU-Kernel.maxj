@@ -1,0 +1,53 @@
+import com.maxeler.maxcompiler.v2.kernelcompiler.Kernel;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelParameters;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+
+class VectorsKernel extends Kernel {
+    
+
+	VectorsKernel(KernelParameters parameters, int vectorSize) {
+		super(parameters);
+
+        DFEVectorType<DFEVar> vectorType = new DFEVectorType<DFEVar>(dfeFloat(8, 24), vectorSize);
+		// Input
+		DFEVector<DFEVar> inVector = io.input("inVector", vectorType);
+		
+		DFEVector<DFEVar> lower = vectorType.newInstance(this);
+		DFEVector<DFEVar> upper = vectorType.newInstance(this);
+		
+		int n = (int) Math.sqrt(vectorSize);
+
+        for (int i = 0; i < n; i++) {
+            // Upper Triangular
+            for (int k = 0; k < n; k++) {
+                // Sum of L(i, j) * U(j, k)
+                DFEVar sum = constant.var(dfeFloat(8, 24),0);
+                for (int j = 0; j < i; j++) {
+                    sum += lower[i * (n) + j] * upper[j * (n) +k];
+                }
+                   
+     
+                // Evaluating U(i, k)
+                upper[i * (n) + k] <== inVector[i * (n) + k] - sum;
+            }
+            // Lower Triangular
+            for (int k = 0; k < n; k++) {
+                DFEVar sum = constant.var(dfeFloat(8, 24),0);
+                for (int j = 0; j < i; j++) {
+                    sum += (lower[k *(n) +j] * upper[j *(n) +i]);
+                }
+                DFEVar div = (inVector[k *(n) +i] - sum) / upper[i*(n) +i];
+                lower[k * (n) + i] <== i==k ? constant.var(dfeFloat(8, 24),1): div;
+            }
+        }
+
+		
+		//Output
+		io.output("outVector1", inVector, vectorType);
+		io.output("outVector2", inVector, vectorType);
+	}
+
+}
+
